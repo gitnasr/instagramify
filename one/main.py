@@ -183,11 +183,15 @@ class Instagramify:
     def comments_appender(self,comment,i):
     
         comments = self.db.table("comments")
+        is_verified = "No"
+        if comment['node']['owner']['is_verified'] == True:
+            is_verified = "YES"
+
         comment_object = {
                             "comment_id": comment['node']['id'],
                             "user_commented": comment['node']['owner']['username'],
                             "user_link": 'https://instagram.com/{}'.format(comment['node']['owner']['username']),
-                            "is_verified": comment['node']['owner']['is_verified'],
+                            "is_verified": is_verified,
                             "comment": comment['node']['text']
                         }
         i['comments'].append(comment_object)
@@ -208,7 +212,10 @@ class Instagramify:
             print("This account is limited. trying another account....")
 
     def save_results(self):
-        with open('{}.csv'.format(self.file_name), 'a', newline='', encoding="utf-8-sig") as Saver:
+        with open('{}.csv'.format(self.file_name), 'a', newline='', encoding="utf-8-sig",) as Saver:
+            headerList = ['Username', 'Link', 'Posts Count', 'Following','Followers', 'Caption',"Likes","User Commended","Comment","Commenter Link","Blue Badge"]
+            dw = csv.DictWriter(Saver, delimiter=',', fieldnames=headerList)
+            dw.writeheader()
             results_writer = csv.writer(Saver)
             for p in self.posts_data:
                     try:

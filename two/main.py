@@ -1,17 +1,15 @@
 import csv
-from os import path
 import random
 import time
 
 
-import json
 import humanize
 import uuid
 from humanize.number import intcomma
 
 import requests
 
-import urllib.parse
+
 from tinydb import TinyDB,Query
 from tkinter import Tk
 from tkinter.filedialog import askopenfilename
@@ -83,17 +81,20 @@ class Commentify:
             if len(is_exitsted) == 0:
                 r = self.session.get("https://instagram.com/{}?__a=1".format(comment['user_commented']))
                 r = r.json()['graphql']['user']
-
+                is_verified = "No"
+                if r['is_verified'] == True:
+                    is_verified = "Yes"
                 commenter = {
                     "followedBy": humanize.intcomma(r['edge_followed_by']['count']),
                     "following_count": humanize.intcomma(r['edge_follow']['count']),
                     "posts": humanize.intcomma(r['edge_owner_to_timeline_media']['count']),
-                    "is_verified": r['is_verified'],
+                    "is_verified": is_verified,
                     "full_name": r['full_name'],
                     "user_id": r['id'],
                     "username": r['username'],
                     "followers":[],
-                    "is_private":r['is_private']
+                    "is_private":r['is_private'],
+                    "link":"https://instagram.com/{}".format(r['username'])
                 }
                 self.commenters_db.table("commenters").insert(commenter)
                 self.commenters.append(commenter)
@@ -117,10 +118,13 @@ class Commentify:
                             count_following_from_api = len(data)
                             print("Commenter with id: {} followers #{}".format(commenter['username'],humanize.intcomma(count_following_from_api)))
                             for f in data:
+                                is_verified = "No"
+                                if f['is_verified'] == True:
+                                    is_verified = "Yes"
                                 follower = {
                                 "username":f['username'],
                                 "link":"https://instagram/{}".format(f['username']),
-                                "is_verified":f['is_verified'],
+                                "is_verified":is_verified,
                                 "origin_user":commenter['username']
                                 }
                                 commenter['followers'].append(follower)
@@ -138,6 +142,9 @@ class Commentify:
 
     def save_results(self):
         with open('{}.csv'.format(self.file_name), 'a', newline='', encoding="utf-8-sig") as Saver:
+            headerList = ['Username', 'Link', 'Posts Count', 'Followers','Following', 'Follower Username',"Follower Link","Blue Badge"]
+            dw = csv.DictWriter(Saver, delimiter=',', fieldnames=headerList)
+            dw.writeheader()
             results_writer = csv.writer(Saver)
             for commenter in self.commenters:
                     try:
@@ -145,13 +152,13 @@ class Commentify:
                         for f in commenter['followers']:
                             if commenter['user_id']:
                                 results_writer.writerow(
-                                    [commenter['username'],  commenter['posts'], commenter['followedBy'],
+                                    [commenter['username'],commenter['link'],  commenter['posts'], commenter['followedBy'],
                                      commenter['following_count'], f['username'], f['link'],f['is_verified']])
                     except Exception as e:
                         print("ERROR: Saving file error, ",e)
                         continue
-            self.commenters = []
-        Saver.close()         
+        Saver.close()   
+        self.commenters = []      
 if __name__ == '__main__':
     app = Commentify()
         
