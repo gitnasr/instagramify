@@ -11,8 +11,7 @@ import requests
 
 
 from tinydb import TinyDB,Query
-from tkinter import Tk
-from tkinter.filedialog import askopenfilename
+
 
 class Commentify:
     def __init__(self):
@@ -22,11 +21,8 @@ class Commentify:
 
         self.login_url = "https://i.instagram.com/api/v1/accounts/login/"
         self.followers_url = "https://i.instagram.com/api/v1/friendships/{}/followers/?count={}&search_surface=follow_list_page"
-        Tk().withdraw()
-        db_path = askopenfilename(initialdir=".",
-                           filetypes=(("Database File", "*.json"),),
-                           title="Choose a file."
-                           )
+        print("Please, Put JSON file in this folder. and paste it's name in the input field")
+        db_path = input("JSON file name (EX:16666666.json): ")
         self.db = TinyDB(db_path)
         self.commenters_db = TinyDB("{}.json".format(self.file_name))
 
