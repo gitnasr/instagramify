@@ -16,9 +16,9 @@ from tinydb import TinyDB,Query
 class Commentify:
     def __init__(self):
         self.commenters = []
+        self.file_name = time.time()
         atexit.register(self.on_graceful_exit)
 
-        self.file_name = time.time()
         self.user_agent = "Instagram 4.1.1 Android (11/1.5.0; 285; 800x1280; samsung; GT-N7000; GT-N7000; smdkc210; en_US)"
         self.guid = str(uuid.uuid1())
 

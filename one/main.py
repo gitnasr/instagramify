@@ -1,9 +1,10 @@
 import csv
+import os
 import random
 import time
 
 
-import json
+import json,atexit
 import humanize
 import uuid
 
@@ -14,7 +15,10 @@ from tinydb import TinyDB
 
 class Instagramify:
     def __init__(self):
+        self.posts_data = []
         self.file_name = time.time()
+        atexit.register(self.on_graceful_exit)
+
         self.user_agent = "Instagram 4.1.1 Android (11/1.5.0; 285; 800x1280; samsung; GT-N7000; GT-N7000; smdkc210; en_US)"
         self.guid = str(uuid.uuid1())
 
@@ -22,7 +26,6 @@ class Instagramify:
         self.posts_link = 'https://i.instagram.com/api/v1/feed/user/'
         self.comments_link = 'https://www.instagram.com/graphql/query/?query_hash=bc3296d1ce80a24b1b6e40b1e72903f5&variables={}'
 
-        self.posts_data = []
         self.db =  TinyDB('{}.json'.format(self.file_name))
         self.loop_targets()
 
@@ -231,6 +234,18 @@ class Instagramify:
                         continue
             self.posts_data = []
         Saver.close()
+        
+    def on_graceful_exit(self):
+        # Check if already saved?
+        isExisted = os.path.exists('{}.csv'.format(self.file_name)) 
+        if isExisted:
+            print("File Saved Successfully")
+        else:
+            if len(self.posts_data) > 0:
+                self.save_results()
+                print("File Saved Successfully")
+            else:
+                print("Nothing to be saved")
 
 
 if __name__ == '__main__':
