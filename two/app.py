@@ -93,10 +93,10 @@ class Commentify:
                                 if f['is_verified'] == True:
                                     is_verified = "Yes"
                                 follower = {
-                                "username":f['username'],
-                                "link":"https://instagram/{}".format(f['username']),
-                                "is_verified":is_verified,
-                                "origin_user":commenter['username']
+                                    "username":f['username'],
+                                    "link":"https://instagram/{}".format(f['username']),
+                                    "is_verified":is_verified,
+                                    "origin_user":commenter['username']
                                 }
                                 commenter['following'].append(follower)
                                 self.commenters_db.table("following").insert(follower)
@@ -117,6 +117,9 @@ class Commentify:
             is_exitsted = self.commenters_db.table("commenters").search(self.SearchInDB.username == comment['user_commented'])
             if len(is_exitsted) == 0:
                 r = self.session.get("https://instagram.com/{}?__a=1".format(comment['user_commented']))
+                if "status" in r.json() and r.json()['status'] == "fail":
+                    print("ERROR: This Account is Banned")
+                    exit()
                 r = r.json()['graphql']['user']
                 is_verified = "No"
                 if r['is_verified'] == True:
@@ -133,39 +136,41 @@ class Commentify:
                     "is_private":r['is_private'],
                     "link":"https://instagram.com/{}".format(r['username'])
                 }
-                self.commenters_db.table("commenters").insert(commenter)
-                self.commenters.append(commenter)
-                print("Commenter #{} Public Info Ready.".format(i+1))
-                time.sleep(1)
+                if r['is_private'] or r['edge_follow']['count'] == 0:
+                    print("Skipping {} Account because its private or Zero Following".format(comment['user_commented']))
+                else:
+                    self.commenters_db.table("commenters").insert(commenter)
+                    self.commenters.append(commenter)
+                    print("Commenter #{} Public Info Ready.".format(i+1))
+                    time.sleep(1)
             else:
                 print("Skipping commenter due to duplicate")
         except KeyError as e:
+            print(e)
             print("ERROR: Key error on {}".format(comment['user_commented']))
             
 
     def save_results(self):
-        with open('{}.csv'.format(self.file_name), 'a', newline='', encoding="utf-8-sig") as Saver:
+        with open('2_{}.csv'.format(self.file_name), 'a', newline='', encoding="utf-8-sig") as Saver:
             headerList = ['Username', 'Link', 'Posts Count', 'Followers','Following', 'Following Username',"Following Link","Blue Badge"]
             dw = csv.DictWriter(Saver, delimiter=',', fieldnames=headerList)
             dw.writeheader()
             results_writer = csv.writer(Saver)
             for commenter in self.commenters:
-                    try:
-
-                        for f in commenter['following']:
-                            if commenter['user_id']:
-                                results_writer.writerow(
+                try:
+                    for f in commenter['following']:
+                        results_writer.writerow(
                                     [commenter['username'],commenter['link'],  commenter['posts'], commenter['followedBy'],
                                      commenter['following_count'], f['username'], f['link'],f['is_verified']])
-                    except Exception as e:
-                        print("ERROR: Saving file error, ",e)
-                        continue
+                except Exception as e:
+                    print("ERROR: Saving file error, ",e)
+                    continue
         Saver.close()   
         self.commenters = []     
 
     def on_graceful_exit(self):
         # Check if already saved?
-        isExisted = os.path.exists('{}.csv'.format(self.file_name)) 
+        isExisted = os.path.exists('2_{}.csv'.format(self.file_name)) 
         if isExisted:
             print("File Saved Successfully")
         else:

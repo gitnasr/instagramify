@@ -26,7 +26,7 @@ class Instagramify:
         self.posts_link = 'https://i.instagram.com/api/v1/feed/user/'
         self.comments_link = 'https://www.instagram.com/graphql/query/?query_hash=bc3296d1ce80a24b1b6e40b1e72903f5&variables={}'
 
-        self.db =  TinyDB('{}.json'.format(self.file_name))
+        self.db =  TinyDB('1_{}.json'.format(self.file_name))
         self.loop_targets()
 
 
@@ -35,8 +35,8 @@ class Instagramify:
             links = [line.strip() for line in f]
         f.close()
         links = list(filter(None, links))
-        for (i,link) in enumerate(links):
-            print("We starting with #{}",format(i+1))
+        for link in links:
+            print("We starting with {}",format(link))
             self.current_url = link
             self.login(self.current_url)
             
@@ -65,6 +65,7 @@ class Instagramify:
     def basic_information(self, link):
         print("Getting Basic Public Information")
         r = self.session.get("{}?__a=1".format(link))
+        print(r.json())
         r = r.json()['graphql']['user']
 
         self.user_data = {
@@ -156,7 +157,6 @@ class Instagramify:
                         
                         time.sleep(3)
                         variable = self.comments_object_convertor(i['code'], is_has_more_hash)
-                        print(variable)
                         r = self.session.get(self.comments_link.format(variable)).json()
                         page_info_data = r['data']['shortcode_media']['edge_media_to_parent_comment']
                         count = len(page_info_data['edges'])
@@ -215,21 +215,20 @@ class Instagramify:
             print("This account is limited. trying another account....")
 
     def save_results(self):
-        with open('{}.csv'.format(self.file_name), 'a', newline='', encoding="utf-8-sig",) as Saver:
+        with open('1_{}.csv'.format(self.file_name), 'a', newline='', encoding="utf-8-sig",) as Saver:
             headerList = ['Username', 'Link', 'Posts Count', 'Following','Followers', 'Caption',"Likes","User Commended","Comment","Commenter Link","Blue Badge"]
             dw = csv.DictWriter(Saver, delimiter=',', fieldnames=headerList)
             dw.writeheader()
             results_writer = csv.writer(Saver)
             for p in self.posts_data:
-                    try:
-
-                        for c in p['comments']:
-                            if p['user']:
-                                results_writer.writerow(
+                try:
+                    for c in p['comments']:
+                        if p['user']:
+                            results_writer.writerow(
                                     [p['user']['username'], p['user']['link'], p['user']['posts'], p['user']['following'],
                                      p['user']['followed'], p['caption'], p['likes'], c['user_commented'], c['comment'], c['user_link'],
                                      c['is_verified']])
-                    except Exception as e:
+                except Exception as e:
                         print("ERROR: Saving file error, ",e)
                         continue
             self.posts_data = []
@@ -237,7 +236,7 @@ class Instagramify:
         
     def on_graceful_exit(self):
         # Check if already saved?
-        isExisted = os.path.exists('{}.csv'.format(self.file_name)) 
+        isExisted = os.path.exists('1_{}.csv'.format(self.file_name)) 
         if isExisted:
             print("File Saved Successfully")
         else:
