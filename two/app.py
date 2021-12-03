@@ -20,9 +20,10 @@ class Commentify:
         self.guid = str(uuid.uuid1())
 
         self.login_url = "https://i.instagram.com/api/v1/accounts/login/"
-        self.followers_url = "https://i.instagram.com/api/v1/friendships/{}/followers/?count={}&search_surface=follow_list_page"
+        self.following_url = "https://i.instagram.com/api/v1/friendships/{}/following/?count={}"
         print("Please, Put JSON file in this folder. and paste it's name in the input field")
         db_path = input("JSON file name (EX:16666666.json): ")
+        self.max_results = input("Maximum number of results to return (Leave empty to return all): ")
         self.db = TinyDB(db_path)
         self.commenters_db = TinyDB("{}.json".format(self.file_name))
 
@@ -62,13 +63,50 @@ class Commentify:
                 self.get_commenter_public_info(comment,i)
                 
             print("Actual Number of Commenters (Remove Duplicates) #{}".format(len(self.commenters)))
-            self.get_followers_info()
-            
+            self.get_following_info()
 
         else:
             print("Whops! we did not see any comments")
             exit()
 
+
+
+    def get_following_info(self):
+            
+            for (i,commenter) in enumerate(self.commenters):
+                    try:
+                        if commenter['is_private'] == False:
+                            print("Commenter #{} of {}".format(i+1, intcomma(len(self.commenters))))
+                            count = commenter['following_count']
+                            if self.max_results:
+                                count = self.max_results
+                                
+                            following_list = self.session.get(self.following_url.format(commenter['user_id'],count)).json()
+                            data = following_list['users']
+                            count_following_from_api = len(data)
+                            print("Commenter with id: {} Following #{}".format(commenter['username'],humanize.intcomma(count_following_from_api)))
+                            for f in data:
+                                is_verified = "No"
+                                if f['is_verified'] == True:
+                                    is_verified = "Yes"
+                                follower = {
+                                "username":f['username'],
+                                "link":"https://instagram/{}".format(f['username']),
+                                "is_verified":is_verified,
+                                "origin_user":commenter['username']
+                                }
+                                commenter['following'].append(follower)
+                                self.commenters_db.table("following").insert(follower)
+                            time.sleep(3)
+                        else:
+                            print("Skipping {} due to private account".format(commenter['username']))
+                        
+                    except Exception as e:
+                        print(e)
+                        print("ERROR: Something wrong ", e)
+                        print("Located ERROR:", i)
+                        continue
+            self.save_results()
 
     def get_commenter_public_info(self,comment,i):
         try:
@@ -88,7 +126,7 @@ class Commentify:
                     "full_name": r['full_name'],
                     "user_id": r['id'],
                     "username": r['username'],
-                    "followers":[],
+                    "following":[],
                     "is_private":r['is_private'],
                     "link":"https://instagram.com/{}".format(r['username'])
                 }
@@ -101,51 +139,17 @@ class Commentify:
         except KeyError as e:
             print("ERROR: Key error on {}".format(comment['user_commented']))
             
-        
-
-    def get_followers_info(self):
-            
-            for (i,commenter) in enumerate(self.commenters):
-                    try:
-                        if commenter['is_private'] == False:
-                            print("Commenter #{} of {}".format(i+1, intcomma(len(self.commenters))))
-                            followers_list = self.session.get(self.followers_url.format(commenter['user_id'],commenter['following_count'])).json()
-                            data = followers_list['users']
-                            count_following_from_api = len(data)
-                            print("Commenter with id: {} followers #{}".format(commenter['username'],humanize.intcomma(count_following_from_api)))
-                            for f in data:
-                                is_verified = "No"
-                                if f['is_verified'] == True:
-                                    is_verified = "Yes"
-                                follower = {
-                                "username":f['username'],
-                                "link":"https://instagram/{}".format(f['username']),
-                                "is_verified":is_verified,
-                                "origin_user":commenter['username']
-                                }
-                                commenter['followers'].append(follower)
-                                self.commenters_db.table("followers").insert(follower)
-                            time.sleep(3)
-                        else:
-                            print("Skipping {} due to private account".format(commenter['username']))
-                        
-                    except Exception as e:
-                        print(e)
-                        print("ERROR: Something wrong ", e)
-                        print("Located ERROR:", i)
-                        continue
-            self.save_results()
 
     def save_results(self):
         with open('{}.csv'.format(self.file_name), 'a', newline='', encoding="utf-8-sig") as Saver:
-            headerList = ['Username', 'Link', 'Posts Count', 'Followers','Following', 'Follower Username',"Follower Link","Blue Badge"]
+            headerList = ['Username', 'Link', 'Posts Count', 'Followers','Following', 'Following Username',"Following Link","Blue Badge"]
             dw = csv.DictWriter(Saver, delimiter=',', fieldnames=headerList)
             dw.writeheader()
             results_writer = csv.writer(Saver)
             for commenter in self.commenters:
                     try:
 
-                        for f in commenter['followers']:
+                        for f in commenter['following']:
                             if commenter['user_id']:
                                 results_writer.writerow(
                                     [commenter['username'],commenter['link'],  commenter['posts'], commenter['followedBy'],
