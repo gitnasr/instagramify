@@ -1,6 +1,6 @@
 import csv
 import random
-import time
+import time,os,atexit
 
 
 import humanize
@@ -15,6 +15,9 @@ from tinydb import TinyDB,Query
 
 class Commentify:
     def __init__(self):
+        self.commenters = []
+        atexit.register(self.on_graceful_exit)
+
         self.file_name = time.time()
         self.user_agent = "Instagram 4.1.1 Android (11/1.5.0; 285; 800x1280; samsung; GT-N7000; GT-N7000; smdkc210; en_US)"
         self.guid = str(uuid.uuid1())
@@ -27,7 +30,7 @@ class Commentify:
         self.db = TinyDB(db_path)
         self.commenters_db = TinyDB("{}.json".format(self.file_name))
 
-        self.commenters = []
+        
 
         self.SearchInDB = Query()
         self.login()
@@ -158,7 +161,22 @@ class Commentify:
                         print("ERROR: Saving file error, ",e)
                         continue
         Saver.close()   
-        self.commenters = []      
+        self.commenters = []     
+
+    def on_graceful_exit(self):
+        # Check if already saved?
+        isExisted = os.path.exists('{}.csv'.format(self.file_name)) 
+        if isExisted:
+            print("File Saved Successfully")
+        else:
+            if len(self.commenters) > 0:
+                self.save_results()
+                print("File Saved Successfully")
+            else:
+                print("Nothing to be saved")
+
+
 if __name__ == '__main__':
     app = Commentify()
         
+
