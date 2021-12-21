@@ -65,7 +65,6 @@ class Instagramify:
     def basic_information(self, link):
         print("Getting Basic Public Information")
         r = self.session.get("{}?__a=1".format(link))
-        print(r.json())
         r = r.json()['graphql']['user']
 
         self.user_data = {
